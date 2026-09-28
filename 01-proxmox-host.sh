@@ -16,7 +16,7 @@ MEMORY=32768                # RAM in MB (32 GB – Modell ~21 GB + Kontext + Ope
 SWAP=4096                   # Swap in MB
 CORES=12                    # CPU-Kerne
 DISK_GB=100                 # Festplatte in GB (Modell ~21 GB, Docker, Backends)
-STORAGE="local-zfs"         # Storage für die Container-Festplatte
+STORAGE="local-lvm"         # Storage für die Container-Festplatte
 TEMPLATE_STORAGE="local"    # Storage für Container-Templates
 BRIDGE="vmbr0"              # Netzwerk-Bridge
 # -----------------------------------------------------------------------------
@@ -39,7 +39,20 @@ fi
 
 # --- iGPU finden ---------------------------------------------------------------
 info "Suche die AMD-iGPU (amdgpu) ..."
-lsmod | grep -q '^amdgpu' || fail "Kernelmodul amdgpu ist nicht geladen."
+if [[ ! -d /sys/module/amdgpu ]]; then
+  warn "Kernelmodul amdgpu ist nicht geladen – versuche es zu laden ..."
+  modprobe amdgpu || true
+  sleep 2
+fi
+if [[ ! -d /sys/module/amdgpu ]]; then
+  echo "    Mögliche Ursachen (Ausgaben unten):"
+  echo "    - amdgpu steht auf einer Blacklist (z. B. von einer früheren GPU-Passthrough-Einrichtung)"
+  echo "    - Kernel-Parameter wie 'nomodeset' oder 'modprobe.blacklist=amdgpu'"
+  echo "--- Blacklist-Einträge:";  grep -rs amdgpu /etc/modprobe.d/ || echo "    (keine)"
+  echo "--- Kernel-Parameter:";    cat /proc/cmdline
+  echo "--- Kernel-Meldungen:";    dmesg | grep -i amdgpu | tail -n 15 || true
+  fail "Kernelmodul amdgpu konnte nicht geladen werden."
+fi
 RENDER_NODE=""
 for node in /sys/class/drm/renderD*; do
   drv=$(basename "$(readlink -f "$node/device/driver")" 2>/dev/null || true)
@@ -65,7 +78,7 @@ info "Suche Ubuntu-24.04-Template ..."
 pveam update >/dev/null
 TEMPLATE=$(pveam available --section system | awk '{print $2}' | grep -E '^ubuntu-24\.04-standard' | sort -V | tail -n1)
 [[ -n "$TEMPLATE" ]] || fail "Kein Ubuntu-24.04-Template gefunden."
-if ! pveam list "$TEMPLATE_STORAGE" | grep -q "$TEMPLATE"; then
+if [[ "$(pveam list "$TEMPLATE_STORAGE")" != *"$TEMPLATE"* ]]; then
   info "Lade $TEMPLATE herunter ..."
   pveam download "$TEMPLATE_STORAGE" "$TEMPLATE"
 fi

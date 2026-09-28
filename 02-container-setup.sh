@@ -44,11 +44,10 @@ apt-get install -y software-properties-common curl ca-certificates openssl \
 
 info "Prüfe, ob die iGPU im Container sichtbar ist ..."
 ls /dev/dri/renderD* &>/dev/null || fail "Kein /dev/dri/renderD* im Container – GPU-Durchreichen prüfen."
-if vulkaninfo --summary 2>/dev/null | grep -qi 'deviceName.*Radeon'; then
-  vulkaninfo --summary 2>/dev/null | grep -i 'deviceName' | sed 's/^/    /'
-else
+VK_DEVICES=$(vulkaninfo --summary 2>/dev/null | grep -i 'deviceName' || true)
+echo "${VK_DEVICES}" | sed 's/^/    /'
+if [[ "${VK_DEVICES,,}" != *radeon* ]]; then
   warn "Vulkan erkennt keine Radeon-GPU. Lemonade würde dann auf der CPU rechnen."
-  vulkaninfo --summary 2>/dev/null | grep -i 'deviceName' | sed 's/^/    /' || true
 fi
 
 # --- 2. Lemonade installieren -------------------------------------------------
