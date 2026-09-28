@@ -16,7 +16,7 @@ MEMORY=32768                # RAM in MB (32 GB – Modell ~21 GB + Kontext + Ope
 SWAP=4096                   # Swap in MB
 CORES=12                    # CPU-Kerne
 DISK_GB=100                 # Festplatte in GB (Modell ~21 GB, Docker, Backends)
-STORAGE="local-lvm"         # Storage für die Container-Festplatte
+STORAGE="local-zfs"         # Storage für die Container-Festplatte
 TEMPLATE_STORAGE="local"    # Storage für Container-Templates
 BRIDGE="vmbr0"              # Netzwerk-Bridge
 # -----------------------------------------------------------------------------
